@@ -24,6 +24,7 @@ https://github.com/SebLague/Chess-Challenge
    * Note: you may create additional scripts for testing/training your bot, but only the _MyBot.cs_ file will be submitted, so it must be able to run without them.
    * You may not rename the _MyBot_ struct or _Think_ function contained in the _MyBot.cs_ file.
    * The code in MyBot.cs may not exceed the _bot brain capacity_ of 1024 (see below).
+   * blah blah blah
  */
 
 using ChessChallenge.API;
