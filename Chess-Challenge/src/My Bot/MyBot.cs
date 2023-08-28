@@ -34,71 +34,59 @@ using System.Linq; // no Asparallel()
 
 public class MyBot : IChessBot {
     int turn = 0;
+    bool isWhite;
     public Move Think(Board board, Timer timer) {
+        isWhite = board.IsWhiteToMove;
         Console.WriteLine("Turn: " + ++turn);
-        return minimaxRoot(3, board, int.MinValue, int.MaxValue, true);
+        return minimax(2, board, int.MinValue, int.MaxValue, true, isWhite).myMove;
     }
 
     public class Score {
+        //public Score() => (myMove, myValue) = (Move.NullMove, int.MinValue);
         public Score(Move move, int value) => (myMove, myValue) = (move, value);
         public Move myMove { get; }
         public int myValue { get; }
     }
 
-    public static Move minimaxRoot(int depth, Board game, int alpha, int beta, bool isMaximisingPlayer) {
-        Move[] newGameMoves = game.GetLegalMoves();
-        int bestMoveEval = int.MinValue;
-        Move bestMoveFound = Move.NullMove;
-        foreach (Move move in newGameMoves) {
-            Move newGameMove = move;
-            game.MakeMove(newGameMove);
-            Score score = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer);
-            game.UndoMove(newGameMove);
-            if (score.myValue >= bestMoveEval) {
-                bestMoveEval = score.myValue;
-                bestMoveFound = newGameMove;
+    public static Score minimax(int depth, Board game, int alpha, int beta, bool isMaximisingPlayer, bool isWhite) {
+        //bestScore is best amoung Sibling Nodes
+        Score bestScore = new Score(Move.NullMove, int.MinValue);
+        foreach (Move move in game.GetLegalMoves()) {
+            game.MakeMove(move);
+            //((isMaximisingPlayer == isWhite)? 1 : -1)
+            Score current = new Score(move, evalAsWhite(game) * ((isWhite)? 1 : -1));
+            if (current.myValue >= bestScore.myValue) {
+                bestScore = current;
             }
-        }
-        return bestMoveFound;
-    }
-
-    public static Score minimax(int depth, Board game, int alpha, int beta, bool isMaximisingPlayer) {
-        if (depth == 0) {
-            return new Score(Move.NullMove, Eval(game));
-        }
-        Move[] newGameMoves = game.GetLegalMoves();
-        if (isMaximisingPlayer) {
-            Score bestScore = new Score(Move.NullMove, int.MinValue);
-            foreach (Move move in newGameMoves) {
-                game.MakeMove(move);
-                Score test = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer);
-                if (bestScore.myValue <= test.myValue) {
-                    bestScore = test;
+            Console.WriteLine("testing " + move + " Value: " + current.myValue);
+            if (depth > 0) {
+                Score child = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer, !isWhite);
+                if (child.myValue >= bestScore.myValue) {
+                    bestScore = child;
                 }
-                game.UndoMove(move);
+            }
+            game.UndoMove(move);
+            if (isMaximisingPlayer) {
+                //alpha is an aggregate of a line of moves (for player)
                 alpha = Math.Max(alpha, bestScore.myValue);
-                if (beta <= alpha) {
-                    return bestScore;
-                }
+                
+            } else {
+                //beta is aggregate of line of moves (for opponent)
+                beta = Math.Min(beta, bestScore.myValue * -1);
+                
             }
-            return bestScore;
-        } else {
-            Score bestScore = new Score(Move.NullMove, int.MinValue);
-            foreach (Move move in newGameMoves) {
-                game.MakeMove(move);
-                Score test = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer);
-                game.UndoMove(move);
-                beta = Math.Min(beta, bestScore.myValue);
-                if (beta <= alpha) {
-                    return bestScore;
-                }
-            }
-            return bestScore;
+            //if (beta <= alpha) {
+            //    return bestScore;
+            //}
         }
+        Console.WriteLine("Best " + bestScore.myMove + " Value: " + bestScore.myValue);
+        return bestScore;
     }
 
 
-    public static int Eval(Board board) {
+
+
+    public static int evalAsWhite(Board board) {
         char[] pieceNames = { 'p', 'n', 'b', 'r', 'q', 'k' };
         int[] pieceValues = { 10, 30, 30, 50, 90, 900, };
         string state = board.GetFenString().Replace("/", string.Empty).Split()[0];
@@ -114,7 +102,7 @@ public class MyBot : IChessBot {
                 blackScore = score + blackScore;
             }
         }
-        return (whiteScore - blackScore) * ((board.IsWhiteToMove) ? -1 : 1);
+        return (whiteScore - blackScore);
     }
 }
 
