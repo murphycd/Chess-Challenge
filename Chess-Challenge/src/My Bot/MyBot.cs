@@ -35,35 +35,45 @@ using System.Linq; // no Asparallel()
 public class MyBot : IChessBot {
     int turn = 0;
     public Move Think(Board board, Timer timer) {
-        int depth = 1;
+        int depth = 3;
         bool color = board.IsWhiteToMove;
         Console.WriteLine("Turn: " + ++turn);
         //Move[] moves = board.GetLegalMoves();
         Score think = negaMax(depth, board, color);
-        Console.WriteLine("Score: " + think.myValue);
+        //Console.WriteLine("Taking " + think.myMove);
+        //Console.WriteLine("Score: " + think.myValue);
         return think.myMove;
     }
 
     public Score negaMax(int depth, Board board, bool color) {
-        Console.WriteLine("depth: " + depth);
+        //Console.WriteLine("depth: " + depth);
         if (depth == 0) {
-            Console.WriteLine("Eval: " + evaluate(board, color));
+            //Console.WriteLine("Eval: " + evaluate(board, color));
             return new Score(Move.NullMove, evaluate(board, color));
         }
-        //Console.WriteLine("depth: " + depth);
         Move[] moves = board.GetLegalMoves();
         if (moves.Length == 0) {
-            Console.WriteLine("Game has ended");
+            Console.WriteLine("Terminal node reached");
             return new Score(Move.NullMove, evaluate(board, color));
         }
         Score max = new (Move.NullMove, int.MinValue);
         foreach (Move move in moves) {
-            Score score = new (move, negaMax(depth - 1, board, !color).myValue);
+            if(move == Move.NullMove) {
+                return max;
+            }
+            board.MakeMove(move);
+            Score score = new(move, -negaMax(depth - 1, board, !color).myValue);
+            //Console.WriteLine("test " + move);
+            //Console.WriteLine("test score: " + score.myValue);
+            //Console.WriteLine(board.CreateDiagram( true, false, false));
+            //Console.WriteLine();
+            board.UndoMove(move);
             if (score.myValue > max.myValue)
                 max = score;
         }
         //Console.WriteLine("Max Move: " + max.myMove.ToString());
         //Console.WriteLine("Max Score: " + max.myValue);
+        //Console.WriteLine(board.CreateDiagram(true, false, false));
         return max;
     }
 
@@ -72,6 +82,7 @@ public class MyBot : IChessBot {
         int[] pieceValues = { 10, 30, 30, 50, 90, 2000, };
         string state = board.GetFenString().Replace("/", string.Empty).Split()[0];
         string chars = new(state.Where(c => c != '-' && (c < '0' || c > '9')).ToArray());
+        
         int whiteScore = 0;
         int blackScore = 0;
         for (int i = 0; i < chars.Length; i++) {
@@ -84,11 +95,17 @@ public class MyBot : IChessBot {
             }
         }
         Move[] moves = board.GetLegalMoves();
-        int mobility = moves.Length * 1;
-        return (whiteScore - blackScore) + mobility * ((color) ? -1 : 1);
+        int finalScore = (whiteScore - blackScore) * ((color) ? 1 : -1);
+        if (board.IsInCheckmate() == true) {
+            return int.MaxValue;
+        }
+        if (board.IsInCheck() == true) {
+            finalScore += 1000 *((color) ? 1 : -1);
+        }
+        return finalScore;
     }
 
-    public class Score {f
+    public class Score {
         public Score(Move move, int value) => (myMove, myValue) = (move, value);
         public Move myMove { get; }
         public int myValue { get; }
