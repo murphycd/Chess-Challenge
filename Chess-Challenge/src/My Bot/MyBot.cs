@@ -35,72 +35,41 @@ using System.Linq; // no Asparallel()
 public class MyBot : IChessBot {
     int turn = 0;
     public Move Think(Board board, Timer timer) {
+        int depth = 1;
+        bool color = board.IsWhiteToMove;
         Console.WriteLine("Turn: " + ++turn);
-        return minimaxRoot(3, board, int.MinValue, int.MaxValue, true);
+        //Move[] moves = board.GetLegalMoves();
+        Score think = negaMax(depth, board, color);
+        Console.WriteLine("Score: " + think.myValue);
+        return think.myMove;
     }
 
-    public class Score {
-        public Score(Move move, int value) => (myMove, myValue) = (move, value);
-        public Move myMove { get; }
-        public int myValue { get; }
-    }
-
-    public static Move minimaxRoot(int depth, Board game, int alpha, int beta, bool isMaximisingPlayer) {
-        Move[] newGameMoves = game.GetLegalMoves();
-        int bestMoveEval = int.MinValue;
-        Move bestMoveFound = Move.NullMove;
-        foreach (Move move in newGameMoves) {
-            Move newGameMove = move;
-            game.MakeMove(newGameMove);
-            Score score = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer);
-            game.UndoMove(newGameMove);
-            if (score.myValue >= bestMoveEval) {
-                bestMoveEval = score.myValue;
-                bestMoveFound = newGameMove;
-            }
-        }
-        return bestMoveFound;
-    }
-
-    public static Score minimax(int depth, Board game, int alpha, int beta, bool isMaximisingPlayer) {
+    public Score negaMax(int depth, Board board, bool color) {
+        Console.WriteLine("depth: " + depth);
         if (depth == 0) {
-            return new Score(Move.NullMove, Eval(game));
+            Console.WriteLine("Eval: " + evaluate(board, color));
+            return new Score(Move.NullMove, evaluate(board, color));
         }
-        Move[] newGameMoves = game.GetLegalMoves();
-        if (isMaximisingPlayer) {
-            Score bestScore = new Score(Move.NullMove, int.MinValue);
-            foreach (Move move in newGameMoves) {
-                game.MakeMove(move);
-                Score test = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer);
-                if (bestScore.myValue <= test.myValue) {
-                    bestScore = test;
-                }
-                game.UndoMove(move);
-                alpha = Math.Max(alpha, bestScore.myValue);
-                if (beta <= alpha) {
-                    return bestScore;
-                }
-            }
-            return bestScore;
-        } else {
-            Score bestScore = new Score(Move.NullMove, int.MinValue);
-            foreach (Move move in newGameMoves) {
-                game.MakeMove(move);
-                Score test = minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer);
-                game.UndoMove(move);
-                beta = Math.Min(beta, bestScore.myValue);
-                if (beta <= alpha) {
-                    return bestScore;
-                }
-            }
-            return bestScore;
+        //Console.WriteLine("depth: " + depth);
+        Move[] moves = board.GetLegalMoves();
+        if (moves.Length == 0) {
+            Console.WriteLine("Game has ended");
+            return new Score(Move.NullMove, evaluate(board, color));
         }
+        Score max = new (Move.NullMove, int.MinValue);
+        foreach (Move move in moves) {
+            Score score = new (move, negaMax(depth - 1, board, !color).myValue);
+            if (score.myValue > max.myValue)
+                max = score;
+        }
+        //Console.WriteLine("Max Move: " + max.myMove.ToString());
+        //Console.WriteLine("Max Score: " + max.myValue);
+        return max;
     }
 
-
-    public static int Eval(Board board) {
+    public static int evaluate(Board board, bool color) {
         char[] pieceNames = { 'p', 'n', 'b', 'r', 'q', 'k' };
-        int[] pieceValues = { 10, 30, 30, 50, 90, 900, };
+        int[] pieceValues = { 10, 30, 30, 50, 90, 2000, };
         string state = board.GetFenString().Replace("/", string.Empty).Split()[0];
         string chars = new(state.Where(c => c != '-' && (c < '0' || c > '9')).ToArray());
         int whiteScore = 0;
@@ -114,125 +83,14 @@ public class MyBot : IChessBot {
                 blackScore = score + blackScore;
             }
         }
-        return (whiteScore - blackScore) * ((board.IsWhiteToMove) ? -1 : 1);
+        Move[] moves = board.GetLegalMoves();
+        int mobility = moves.Length * 1;
+        return (whiteScore - blackScore) + mobility * ((color) ? -1 : 1);
+    }
+
+    public class Score {f
+        public Score(Move move, int value) => (myMove, myValue) = (move, value);
+        public Move myMove { get; }
+        public int myValue { get; }
     }
 }
-
-/* var reverseArray = function(array) {
-     return array.slice().reverse();
- }
-
- var pawnEvalWhite =
- [
-     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-     [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
-     [1.0, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0, 1.0],
-     [0.5, 0.5, 1.0, 2.5, 2.5, 1.0, 0.5, 0.5],
-     [0.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0],
-     [0.5, -0.5, -1.0, 0.0, 0.0, -1.0, -0.5, 0.5],
-     [0.5, 1.0, 1.0, -2.0, -2.0, 1.0, 1.0, 0.5],
-     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
- ];
-
-var pawnEvalBlack = reverseArray(pawnEvalWhite);
-
-var knightEval =
- [
-     [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
-     [-4.0, -2.0, 0.0, 0.0, 0.0, 0.0, -2.0, -4.0],
-     [-3.0, 0.0, 1.0, 1.5, 1.5, 1.0, 0.0, -3.0],
-     [-3.0, 0.5, 1.5, 2.0, 2.0, 1.5, 0.5, -3.0],
-     [-3.0, 0.0, 1.5, 2.0, 2.0, 1.5, 0.0, -3.0],
-     [-3.0, 0.5, 1.0, 1.5, 1.5, 1.0, 0.5, -3.0],
-     [-4.0, -2.0, 0.0, 0.5, 0.5, 0.0, -2.0, -4.0],
-     [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0]
- ];
-
-var bishopEvalWhite = [
- [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
- [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
- [-1.0, 0.0, 0.5, 1.0, 1.0, 0.5, 0.0, -1.0],
- [-1.0, 0.5, 0.5, 1.0, 1.0, 0.5, 0.5, -1.0],
- [-1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, -1.0],
- [-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0],
- [-1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, -1.0],
- [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0]
-];
-
-var bishopEvalBlack = reverseArray(bishopEvalWhite);
-
-var rookEvalWhite = [
- [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
- [0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5],
- [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
- [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
- [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
- [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
- [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
- [0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0]
-];
-
-var rookEvalBlack = reverseArray(rookEvalWhite);
-
-var evalQueen =
- [
- [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0],
- [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
- [-1.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0],
- [-0.5, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -0.5],
- [0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -0.5],
- [-1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0],
- [-1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, -1.0],
- [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0]
-];
-
-var kingEvalWhite = [
-
- [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
- [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
- [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
- [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
- [-2.0, -3.0, -3.0, -4.0, -4.0, -3.0, -3.0, -2.0],
- [-1.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0],
- [2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0],
- [2.0, 3.0, 1.0, 0.0, 0.0, 1.0, 3.0, 2.0]
-];
-
-var kingEvalBlack = reverseArray(kingEvalWhite);
-
-
-
-
-var getPieceValue = function(piece, x, y) {
- if (piece === null) {
- return 0;
-}
-var getAbsoluteValue = function(piece, isWhite, x, y) {
-     if (piece.type === 'p') {
- return 10 + (isWhite ? pawnEvalWhite[y][x] : pawnEvalBlack[y][x]);
-} else if (piece.type === 'r')
-{
- return 50 + (isWhite ? rookEvalWhite[y][x] : rookEvalBlack[y][x]);
-}
-else if (piece.type === 'n')
-{
- return 30 + knightEval[y][x];
-}
-else if (piece.type === 'b')
-{
- return 30 + (isWhite ? bishopEvalWhite[y][x] : bishopEvalBlack[y][x]);
-}
-else if (piece.type === 'q')
-{
- return 90 + evalQueen[y][x];
-}
-else if (piece.type === 'k')
-{
- return 900 + (isWhite ? kingEvalWhite[y][x] : kingEvalBlack[y][x]);
-}
-throw "Unknown piece type: " + piece.type;
- };
-
-var absoluteValue = getAbsoluteValue(piece, piece.color === 'w', x, y);
-return piece.color === 'w' ? absoluteValue : -absoluteValue;
-};*/
