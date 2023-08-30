@@ -26,6 +26,8 @@ https://github.com/SebLague/Chess-Challenge
    * The code in MyBot.cs may not exceed the _bot brain capacity_ of 1024 (see below).
  */
 
+//13780 nodes
+
 using ChessChallenge.API;
 using System;
 using System.Numerics;
@@ -34,47 +36,64 @@ using System.Linq; // no Asparallel()
 
 public class MyBot : IChessBot {
     int turn = 0;
+    //int nodesSearched = 0;
+    //int nodesSearchedNew = 0;
     public Move Think(Board board, Timer timer) {
-        int depth = 3;
+        int depth = 4;
         bool color = board.IsWhiteToMove;
+        int alpha = -10000;
+        int beta = 10000;
         Console.WriteLine("Turn: " + ++turn);
-        //Move[] moves = board.GetLegalMoves();
-        Score think = negaMax(depth, board, color);
-        //Console.WriteLine("Taking " + think.myMove);
-        //Console.WriteLine("Score: " + think.myValue);
+        Score think = negaMax(depth, board, color, alpha, beta);
+        Console.WriteLine("Taking " + think.myMove);
+        Console.WriteLine("Score: " + think.myValue);
+        //Console.WriteLine("Nodes: " + nodesSearched);
+        //Console.WriteLine("New Nodes: " + nodesSearchedNew);
         return think.myMove;
     }
 
-    public Score negaMax(int depth, Board board, bool color) {
+    public Score negaMax(int depth, Board board, bool color, int alpha, int beta) {
         //Console.WriteLine("depth: " + depth);
         if (depth == 0) {
             //Console.WriteLine("Eval: " + evaluate(board, color));
             return new Score(Move.NullMove, evaluate(board, color));
+        } else {
+            //nodesSearchedNew++;
         }
         Move[] moves = board.GetLegalMoves();
         if (moves.Length == 0) {
-            Console.WriteLine("Terminal node reached");
+            //Console.WriteLine("Game has ended");
             return new Score(Move.NullMove, evaluate(board, color));
         }
-        Score max = new (Move.NullMove, int.MinValue);
+        Score bestScore = new (Move.NullMove, int.MinValue);
         foreach (Move move in moves) {
-            if(move == Move.NullMove) {
-                return max;
+            //nodesSearched++;
+            if (move == Move.NullMove) {
+                return bestScore;
             }
             board.MakeMove(move);
-            Score score = new(move, -negaMax(depth - 1, board, !color).myValue);
+            Score score = new(move, -negaMax(depth - 1, board, !color, -beta, -alpha).myValue);
             //Console.WriteLine("test " + move);
             //Console.WriteLine("test score: " + score.myValue);
             //Console.WriteLine(board.CreateDiagram( true, false, false));
             //Console.WriteLine();
             board.UndoMove(move);
-            if (score.myValue > max.myValue)
-                max = score;
+            if(score.myValue > bestScore.myValue) {
+                bestScore = score;
+            }
+            if (bestScore.myValue > alpha) { 
+                bestScore = new Score(move, bestScore.myValue);
+                alpha = bestScore.myValue;
+            }
+
+            if(alpha >= beta) {
+                break;
+            }
         }
-        //Console.WriteLine("Max Move: " + max.myMove.ToString());
-        //Console.WriteLine("Max Score: " + max.myValue);
+        //Console.WriteLine("Max Move: " + bestScore.myMove.ToString());
+        //Console.WriteLine("Max Score: " + bestScore.myValue);
         //Console.WriteLine(board.CreateDiagram(true, false, false));
-        return max;
+        return bestScore;
     }
 
     public static int evaluate(Board board, bool color) {
@@ -97,7 +116,7 @@ public class MyBot : IChessBot {
         Move[] moves = board.GetLegalMoves();
         int finalScore = (whiteScore - blackScore) * ((color) ? 1 : -1);
         if (board.IsInCheckmate() == true) {
-            return int.MaxValue;
+            finalScore += 1000000 * ((color) ? 1 : -1);
         }
         if (board.IsInCheck() == true) {
             finalScore += 1000 *((color) ? 1 : -1);
