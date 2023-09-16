@@ -11,13 +11,13 @@ public class Stockfish : IChessBot {
 
     // Adjust this so the time it takes to think is adequate
     // Adjusting this also have an effect on how strong it will play
-    const string STOCKFISH_DEPTH = "10";
+    const string STOCKFISH_DEPTH = "5";
 
     // Min: 0, Max: 20
-    const string STOCKFISH_SKILL_LEVEL = "20";
+    const string STOCKFISH_SKILL_LEVEL = "5";
 
     // For best performance, set this equal to the number of CPU cores available.
-    const string STOCKFISH_THREADS = "6";
+    const string STOCKFISH_THREADS = "12";
 
     public Move Think(Board board, Timer timer) {
         Move bestMove = Move.NullMove;
